@@ -1,15 +1,13 @@
 # ============================================================
 #   SALES DASHBOARD — by Muhammed Ilyas Arain
-#   Built with: Streamlit, Pandas, Matplotlib, Seaborn
+#   Built with: Streamlit, Pandas, Plotly
 #   GitHub: https://github.com/ilyasarain943
 # ============================================================
 
 import streamlit as st
 import pandas as pd
-import seaborn as sns
-import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
-import io  # ← needed for chart download buttons
+import plotly.express as px
+import plotly.graph_objects as go
 
 # ============================================================
 # SECTION 1 — PAGE CONFIG
@@ -22,15 +20,43 @@ st.set_page_config(
 )
 
 # ============================================================
-# SECTION 2 — GLOBAL CHART SETTINGS
+# SECTION 2 — GLOBAL THEME SETTINGS
+# Change these to restyle everything at once
 # ============================================================
 CHART_BG   = "#1a1a2e"
+PAPER_BG   = "#1a1a2e"
 TEXT_COLOR = "#e0e0e0"
 GRID_COLOR = "#2a2a4a"
 ACCENT     = "#00d4ff"
 RED_ACCENT = "#e94560"
 
-plt.rcParams["font.family"] = "DejaVu Sans"
+# Plotly chart layout applied to every chart
+# Edit this dict to change all charts at once
+BASE_LAYOUT = dict(
+    paper_bgcolor = PAPER_BG,
+    plot_bgcolor  = CHART_BG,
+    font          = dict(color=TEXT_COLOR, family="Poppins, sans-serif"),
+    title_font    = dict(size=14, color=TEXT_COLOR),
+    showlegend    = False,
+    xaxis = dict(
+        gridcolor    = GRID_COLOR,
+        linecolor    = GRID_COLOR,
+        tickfont     = dict(color=TEXT_COLOR),
+        title_font   = dict(color="#8899bb"),
+    ),
+    yaxis = dict(
+        gridcolor    = GRID_COLOR,
+        linecolor    = GRID_COLOR,
+        tickfont     = dict(color=TEXT_COLOR),
+        title_font   = dict(color="#8899bb"),
+    ),
+    margin      = dict(l=40, r=40, t=50, b=40),
+    hoverlabel  = dict(
+        bgcolor   = "#0f3460",
+        font_size = 13,
+        font_color= TEXT_COLOR,
+    ),
+)
 
 # ============================================================
 # SECTION 3 — CUSTOM CSS
@@ -103,10 +129,6 @@ html, body, [class*="css"] { font-family: 'Poppins', sans-serif; }
     color: #0f0f1a !important;
 }
 
-[data-testid="stDataFrame"] { border: 1px solid #00d4ff33; border-radius: 10px; overflow: hidden; }
-div[data-testid="stDataFrame"] > div { background: #1a1a2e !important; border-radius: 10px; }
-.dvn-scroller, .glideDataEditor { background-color: #1a1a2e !important; color: #e0e0e0 !important; }
-
 .stButton > button {
     background: linear-gradient(90deg, #00d4ff, #0077aa) !important;
     color: #0f0f1a !important; border: none !important; border-radius: 10px !important;
@@ -141,18 +163,18 @@ div[data-testid="stDataFrame"] > div { background: #1a1a2e !important; border-ra
 }
 [data-baseweb="option"]:hover { background: #00d4ff22 !important; }
 
-[data-testid="stImage"], .stPlotlyChart, canvas {
-    cursor: crosshair !important;
-    transition: opacity 0.2s;
-}
-[data-testid="stImage"]:hover { opacity: 0.92; filter: brightness(1.06); }
-
 .stAlert { background: #1e1e3a !important; border: 1px solid #00d4ff33 !important; border-radius: 10px !important; }
 
 div[style*="max-height:420px"]::-webkit-scrollbar { width: 8px; height: 8px; }
 div[style*="max-height:420px"]::-webkit-scrollbar-track { background: #0f0f1a; border-radius: 4px; }
 div[style*="max-height:420px"]::-webkit-scrollbar-thumb { background: #00d4ff55; border-radius: 4px; }
 div[style*="max-height:420px"]::-webkit-scrollbar-thumb:hover { background: #00d4ffaa; }
+
+/* Plotly chart border */
+.js-plotly-plot {
+    border-radius: 12px;
+    border: 1px solid #00d4ff22;
+}
 
 .footer {
     text-align: center; color: #445566; font-size: 0.78rem;
@@ -166,18 +188,16 @@ div[style*="max-height:420px"]::-webkit-scrollbar-thumb:hover { background: #00d
 # SECTION 4 — HELPER FUNCTIONS
 # ============================================================
 
-def style_ax(ax, title="", xlabel="", ylabel=""):
-    """Applies dark theme to any matplotlib chart."""
-    ax.set_facecolor(CHART_BG)
-    ax.figure.patch.set_facecolor(CHART_BG)
-    ax.set_title(title, fontsize=13, fontweight="bold", color=TEXT_COLOR, pad=12)
-    ax.set_xlabel(xlabel, fontsize=10, color="#8899bb")
-    ax.set_ylabel(ylabel, fontsize=10, color="#8899bb")
-    ax.tick_params(colors=TEXT_COLOR, labelsize=9)
-    for spine in ax.spines.values():
-        spine.set_edgecolor(GRID_COLOR)
-    ax.yaxis.grid(True, color=GRID_COLOR, linewidth=0.6, linestyle="--")
-    ax.set_axisbelow(True)
+def apply_layout(fig, title=""):
+    """
+    Applies the dark theme BASE_LAYOUT to any Plotly figure.
+    Always call this after creating a chart.
+    """
+    fig.update_layout(
+        title=title,
+        **BASE_LAYOUT
+    )
+    return fig
 
 
 def kpi_card(icon, label, value, color_class=""):
@@ -197,26 +217,6 @@ def empty_state_check(df, context="filters"):
         st.warning(f"⚠️ No data found for selected {context}. Try adjusting your filters.")
         return True
     return False
-
-
-def chart_download_btn(fig, filename, key):
-    """
-    Renders a download button for any matplotlib figure.
-    Parameters:
-        fig      — the matplotlib figure to save
-        filename — name of downloaded file e.g. "chart.png"
-        key      — unique key string for this button
-    """
-    buf = io.BytesIO()
-    fig.savefig(buf, format="png", dpi=150, bbox_inches="tight", facecolor=CHART_BG)
-    buf.seek(0)
-    st.download_button(
-        label="⬇️ Download Chart",
-        data=buf,
-        file_name=filename,
-        mime="image/png",
-        key=key
-    )
 
 
 # ============================================================
@@ -301,8 +301,8 @@ with st.sidebar:
     else:
         filtered_data = data
 
+    # ── Quick Summary ────────────────────────────────────────
     st.markdown("### 📊 Quick Summary")
-
     total_sales     = filtered_data["Sales"].sum()
     total_quantity  = filtered_data["Quantity"].sum()
     unique_products = filtered_data["Product"].nunique()
@@ -332,7 +332,7 @@ with st.sidebar:
     st.markdown("**🙋 Name:** Muhammed Ilyas Arain")
     st.markdown("**💼 Role:** Python Developer")
     st.markdown("**🏫 Experience:** 6-month internship at IBA University")
-    st.markdown("**🛠️ Skills:** Python · Streamlit · ML · Data Analysis")
+    st.markdown("**🛠️ Skills:** Python · Streamlit · Plotly · ML · Data Analysis")
     st.markdown("**📌 Project:** Interactive Sales Dashboard")
     st.link_button("🔗 GitHub Profile", "https://github.com/ilyasarain943")
     st.markdown("---")
@@ -350,7 +350,7 @@ st.markdown("""
 
 
 # ============================================================
-# SECTION 9 — KPI CARDS ROW
+# SECTION 9 — KPI CARDS
 # ============================================================
 if not filtered_data.empty:
     k1, k2, k3, k4 = st.columns(4)
@@ -372,6 +372,23 @@ if not filtered_data.empty:
 # ============================================================
 tab1, tab2, tab3 = st.tabs(["📦 Overview", "📈 Trends", "🗂️ Raw Data"])
 
+# Plotly config — shows download button on hover, hides other buttons
+# modeBarButtonsToRemove removes clutter, toImageButton stays visible
+PLOTLY_CONFIG = {
+    "displaylogo"             : False,
+    "modeBarButtonsToRemove"  : [
+        "zoom2d","pan2d","select2d","lasso2d",
+        "zoomIn2d","zoomOut2d","autoScale2d","resetScale2d"
+    ],
+    # Download button always visible on hover — top right of chart
+    "toImageButtonOptions": {
+        "format" : "png",
+        "scale"  : 2,        # high resolution download
+        "width"  : 900,
+        "height" : 500,
+    }
+}
+
 
 # ════════════════════════════════════════════════════════════
 # TAB 1 — OVERVIEW
@@ -386,85 +403,93 @@ with tab1:
     # ── Chart 1 — Sales by Region ────────────────────────────
     with col1:
         st.markdown("<div class='section-title'>🌍 Total Sales by Region</div>", unsafe_allow_html=True)
-        region_sales  = filtered_data.groupby("Region")["Sales"].sum().sort_values(ascending=False)
-        palette_blues = sns.color_palette("Blues_d", len(region_sales))
+        region_sales = filtered_data.groupby("Region")["Sales"].sum().sort_values(ascending=False).reset_index()
 
-        fig, ax = plt.subplots(figsize=(6, 4))
-        sns.barplot(x=region_sales.index, y=region_sales.values, palette=palette_blues, ax=ax)
-        style_ax(ax, title="Sales by Region", xlabel="Region", ylabel="Total Sales (USD)")
-        for container in ax.containers:
-            ax.bar_label(container, fmt="%.0f", fontsize=8, color=TEXT_COLOR, label_type="edge", padding=2)
-        patches = [mpatches.Patch(color=palette_blues[i], label=r) for i, r in enumerate(region_sales.index)]
-        ax.legend(handles=patches, title="Region", title_fontsize=8, fontsize=7, loc="upper right",
-                  facecolor=CHART_BG, edgecolor=GRID_COLOR, labelcolor=TEXT_COLOR)
-        plt.tight_layout()
-        st.pyplot(fig)
-        chart_download_btn(fig, "sales_by_region.png", "chart_region")  # ← download button
-        plt.close(fig)
+        fig = px.bar(
+            region_sales,
+            x="Region", y="Sales",
+            color="Region",                          # each region gets unique color
+            color_discrete_sequence=px.colors.sequential.Blues_r,
+            text="Sales",                            # value label on bar
+            labels={"Sales": "Total Sales (USD)"},
+        )
+        fig.update_traces(
+            texttemplate="$%{text:,.0f}",
+            textposition="outside",
+            hovertemplate="<b>%{x}</b><br>Sales: $%{y:,.2f}<extra></extra>"
+        )
+        fig = apply_layout(fig, "")
+        # Set filename for download button
+        PLOTLY_CONFIG["toImageButtonOptions"]["filename"] = "sales_by_region"
+        st.plotly_chart(fig, use_container_width=True, config=PLOTLY_CONFIG)
 
     # ── Chart 2 — Top 5 Products ─────────────────────────────
     with col2:
         st.markdown("<div class='section-title'>🏆 Top 5 Products by Sales</div>", unsafe_allow_html=True)
-        top_products   = filtered_data.groupby("Product")["Sales"].sum().sort_values(ascending=False).head(5)
-        palette_orange = sns.color_palette("Oranges_r", len(top_products))
+        top_products = filtered_data.groupby("Product")["Sales"].sum().sort_values(ascending=False).head(5).reset_index()
 
-        fig, ax = plt.subplots(figsize=(6, 4))
-        sns.barplot(x=top_products.values, y=top_products.index, palette=palette_orange, ax=ax)
-        style_ax(ax, title="Top 5 Products", xlabel="Total Sales (USD)", ylabel="Product")
-        for container in ax.containers:
-            ax.bar_label(container, fmt="%.0f", fontsize=8, color=TEXT_COLOR, label_type="edge", padding=2)
-        patches = [mpatches.Patch(color=palette_orange[i], label=p) for i, p in enumerate(top_products.index)]
-        ax.legend(handles=patches, title="Product", title_fontsize=8, fontsize=7, loc="lower right",
-                  facecolor=CHART_BG, edgecolor=GRID_COLOR, labelcolor=TEXT_COLOR)
-        plt.tight_layout()
-        st.pyplot(fig)
-        chart_download_btn(fig, "top_products.png", "chart_products")  # ← download button
-        plt.close(fig)
+        fig = px.bar(
+            top_products,
+            x="Sales", y="Product",
+            orientation="h",                         # horizontal bar
+            color="Product",
+            color_discrete_sequence=px.colors.sequential.Oranges_r,
+            text="Sales",
+            labels={"Sales": "Total Sales (USD)"},
+        )
+        fig.update_traces(
+            texttemplate="$%{x:,.0f}",
+            textposition="outside",
+            hovertemplate="<b>%{y}</b><br>Sales: $%{x:,.2f}<extra></extra>"
+        )
+        fig = apply_layout(fig, " ")
+        PLOTLY_CONFIG["toImageButtonOptions"]["filename"] = "top_5_products"
+        st.plotly_chart(fig, use_container_width=True, config=PLOTLY_CONFIG)
 
     col3, col4 = st.columns(2)
 
     # ── Chart 3 — Sales by Category (Donut) ──────────────────
     with col3:
         st.markdown("<div class='section-title'>🗂️ Sales by Category</div>", unsafe_allow_html=True)
-        cat_sales   = filtered_data.groupby("Category")["Sales"].sum()
-        palette_cat = sns.color_palette("Set2", len(cat_sales))
+        cat_sales = filtered_data.groupby("Category")["Sales"].sum().reset_index()
 
-        fig, ax = plt.subplots(figsize=(6, 4))
-        wedges, texts, autotexts = ax.pie(
-            cat_sales.values, labels=None, autopct="%1.1f%%",
-            colors=palette_cat, startangle=140, pctdistance=0.75,
-            wedgeprops=dict(width=0.6, edgecolor=CHART_BG, linewidth=2)
+        fig = px.pie(
+            cat_sales,
+            names="Category", values="Sales",
+            hole=0.5,                                # donut style
+            color_discrete_sequence=px.colors.qualitative.Set2,
         )
-        for at in autotexts:
-            at.set_color(TEXT_COLOR); at.set_fontsize(8)
-        ax.set_title("Sales by Category", fontsize=13, fontweight="bold", color=TEXT_COLOR, pad=12)
-        ax.figure.patch.set_facecolor(CHART_BG)
-        patches = [mpatches.Patch(color=palette_cat[i], label=c) for i, c in enumerate(cat_sales.index)]
-        ax.legend(handles=patches, title="Category", title_fontsize=8, fontsize=7, loc="lower left",
-                  facecolor=CHART_BG, edgecolor=GRID_COLOR, labelcolor=TEXT_COLOR)
-        plt.tight_layout()
-        st.pyplot(fig)
-        chart_download_btn(fig, "sales_by_category.png", "chart_category")  # ← download button
-        plt.close(fig)
+        fig.update_traces(
+            textposition="inside",
+            textinfo="percent+label",
+            hovertemplate="<b>%{label}</b><br>Sales: $%{value:,.2f}<br>%{percent}<extra></extra>",
+            marker=dict(line=dict(color=CHART_BG, width=2))
+        )
+        fig = apply_layout(fig, "")
+        PLOTLY_CONFIG["toImageButtonOptions"]["filename"] = "sales_by_category"
+        st.plotly_chart(fig, use_container_width=True, config=PLOTLY_CONFIG)
 
     # ── Chart 4 — Sales by Customer Type ─────────────────────
     with col4:
         st.markdown("<div class='section-title'>👤 Sales by Customer Type</div>", unsafe_allow_html=True)
-        cust_sales   = filtered_data.groupby("Customer Type")["Sales"].sum().sort_values(ascending=False)
-        palette_cust = sns.color_palette("cool", len(cust_sales))
+        cust_sales = filtered_data.groupby("Customer Type")["Sales"].sum().sort_values(ascending=False).reset_index()
 
-        fig, ax = plt.subplots(figsize=(5.5, 6))
-        sns.barplot(x=cust_sales.index, y=cust_sales.values, palette=palette_cust, ax=ax)
-        style_ax(ax, title="Sales by Customer Type", xlabel="Customer Type", ylabel="Total Sales (USD)")
-        for container in ax.containers:
-            ax.bar_label(container, fmt="%.0f", fontsize=8, color=TEXT_COLOR, label_type="edge", padding=2)
-        patches = [mpatches.Patch(color=palette_cust[i], label=c) for i, c in enumerate(cust_sales.index)]
-        ax.legend(handles=patches, title="Customer", title_fontsize=8, fontsize=7, loc="upper right",
-                  facecolor=CHART_BG, edgecolor=GRID_COLOR, labelcolor=TEXT_COLOR)
-        plt.tight_layout()
-        st.pyplot(fig)
-        chart_download_btn(fig, "sales_by_customer.png", "chart_customer")  # ← download button
-        plt.close(fig)
+        fig = px.bar(
+            cust_sales,
+            x="Customer Type", y="Sales",
+            color="Customer Type",
+            color_discrete_sequence=["#00d4ff", "#e94560", "#00ff99", "#ffd700"],
+            text="Sales",
+            labels={"Sales": "Total Sales (USD)"},
+        )
+        fig.update_traces(
+            texttemplate="$%{text:,.0f}",
+            textposition="outside",
+            hovertemplate="<b>%{x}</b><br>Sales: $%{y:,.2f}<extra></extra>"
+        )
+        fig = apply_layout(fig, " ")
+        PLOTLY_CONFIG["toImageButtonOptions"]["filename"] = "sales_by_customer"
+        st.plotly_chart(fig, use_container_width=True, config=PLOTLY_CONFIG)
 
 
 # ════════════════════════════════════════════════════════════
@@ -477,49 +502,64 @@ with tab2:
 
     # ── Chart 5 — Daily Sales Trend ──────────────────────────
     st.markdown("<div class='section-title'>📅 Daily Sales Trend</div>", unsafe_allow_html=True)
-    sales_trend = filtered_data.groupby("Date")["Sales"].sum().sort_index()
+    sales_trend = filtered_data.groupby("Date")["Sales"].sum().reset_index()
 
-    fig, ax = plt.subplots(figsize=(12, 4.5))
-    ax.fill_between(sales_trend.index, sales_trend.values, alpha=0.18, color=ACCENT)
-    sns.lineplot(x=sales_trend.index, y=sales_trend.values,
-                 marker="o", color=ACCENT, linewidth=2, markersize=5, ax=ax)
-    style_ax(ax, title="Daily Sales Trend", xlabel="Date", ylabel="Total Sales (USD)")
-    plt.xticks(rotation=45)
-    patch = mpatches.Patch(color=ACCENT, label="Daily Sales")
-    ax.legend(handles=[patch], title="Metric", title_fontsize=8, fontsize=8, loc="upper left",
-              facecolor=CHART_BG, edgecolor=GRID_COLOR, labelcolor=TEXT_COLOR)
-    plt.tight_layout()
-    st.pyplot(fig)
-    chart_download_btn(fig, "daily_trend.png", "chart_trend")  # ← download button
-    plt.close(fig)
+    fig = px.area(
+        sales_trend,
+        x="Date", y="Sales",
+        labels={"Sales": "Total Sales (USD)"},
+        color_discrete_sequence=[ACCENT],
+    )
+    fig.update_traces(
+        line=dict(width=2, color=ACCENT),
+        fillcolor="rgba(0,212,255,0.15)",
+        hovertemplate="<b>%{x}</b><br>Sales: $%{y:,.2f}<extra></extra>"
+    )
+    fig = apply_layout(fig, " ")
+    PLOTLY_CONFIG["toImageButtonOptions"]["filename"] = "daily_sales_trend"
+    st.plotly_chart(fig, use_container_width=True, config=PLOTLY_CONFIG)
 
     # ── Chart 6 — Sales by Weekday ───────────────────────────
     st.markdown("<div class='section-title'>📅 Sales by Day of Week</div>", unsafe_allow_html=True)
-    weekday            = filtered_data.copy()
-    weekday["Weekday"] = weekday["Date"].dt.day_name()
-    day_order          = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"]
-    weekday_sales      = weekday.groupby("Weekday")["Sales"].sum().reindex(day_order).fillna(0)
-    max_day            = weekday_sales.idxmax()
-    bar_colors         = [ACCENT if d == max_day else "#2a5298" for d in weekday_sales.index]
+    weekday             = filtered_data.copy()
+    weekday["Weekday"]  = weekday["Date"].dt.day_name()
+    day_order           = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"]
+    weekday_sales       = weekday.groupby("Weekday")["Sales"].sum().reindex(day_order).fillna(0).reset_index()
 
-    fig, ax = plt.subplots(figsize=(12, 4))
-    bars = ax.bar(weekday_sales.index, weekday_sales.values, color=bar_colors,
-                  edgecolor=CHART_BG, linewidth=1.5, width=0.6)
-    style_ax(ax, title="Sales by Day of Week", xlabel="Day", ylabel="Total Sales (USD)")
-    for bar in bars:
-        height = bar.get_height()
-        ax.text(bar.get_x() + bar.get_width()/2., height + 50,
-                f"${height:,.0f}", ha="center", va="bottom",
-                fontsize=8, color=TEXT_COLOR, fontweight="600")
-    patch_best  = mpatches.Patch(color=ACCENT,   label=f"Best Day: {max_day}")
-    patch_other = mpatches.Patch(color="#2a5298", label="Other Days")
-    ax.legend(handles=[patch_best, patch_other], title="Weekday", title_fontsize=8,
-              fontsize=8, loc="upper right",
-              facecolor=CHART_BG, edgecolor=GRID_COLOR, labelcolor=TEXT_COLOR)
-    plt.tight_layout()
-    st.pyplot(fig)
-    chart_download_btn(fig, "weekday_sales.png", "chart_weekday")  # ← download button
-    plt.close(fig)
+    # Highlight best day in cyan, others in steel blue
+    max_day = weekday_sales.loc[weekday_sales["Sales"].idxmax(), "Weekday"]
+    weekday_sales["Color"] = weekday_sales["Weekday"].apply(
+        lambda d: ACCENT if d == max_day else "#2a5298"
+    )
+
+    fig = go.Figure(go.Bar(
+        x=weekday_sales["Weekday"],
+        y=weekday_sales["Sales"],
+        marker_color=weekday_sales["Color"],
+        marker_line_color=CHART_BG,
+        marker_line_width=1.5,
+        text=weekday_sales["Sales"],
+        texttemplate="$%{text:,.0f}",
+        textposition="outside",
+        hovertemplate="<b>%{x}</b><br>Sales: $%{y:,.2f}<extra></extra>",
+        name="Sales"
+    ))
+    fig = apply_layout(fig, "Sales by Day of Week")
+    fig.update_layout(
+        xaxis_title="Day of Week",
+        yaxis_title="Total Sales (USD)",
+        showlegend=False,
+        # Add annotation for best day
+        annotations=[dict(
+            x=max_day, y=weekday_sales[weekday_sales["Weekday"]==max_day]["Sales"].values[0],
+            text=f"⭐ Best Day",
+            showarrow=True, arrowhead=2,
+            arrowcolor=ACCENT, font=dict(color=ACCENT, size=11),
+            ay=-40
+        )]
+    )
+    PLOTLY_CONFIG["toImageButtonOptions"]["filename"] = "weekday_sales"
+    st.plotly_chart(fig, use_container_width=True, config=PLOTLY_CONFIG)
 
 
 # ════════════════════════════════════════════════════════════
@@ -582,9 +622,9 @@ with tab3:
 # ============================================================
 st.markdown("""
 <div class='footer'>
-    ✨ Built with Streamlit · Matplotlib · Seaborn &nbsp;|&nbsp;
+    ✨ Built with Streamlit · Plotly · Pandas &nbsp;|&nbsp;
     Developer: <strong>Muhammed Ilyas Arain</strong> &nbsp;|&nbsp;
     IBA University Intern &nbsp;|&nbsp;
     <a href='https://github.com/ilyasarain943' style='color:#00d4ff;text-decoration:none;'>GitHub 🔗</a>
 </div>
-""", unsafe_allow_html=True)
+""", unsafe_allow_html=True) 
