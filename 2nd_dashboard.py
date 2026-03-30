@@ -842,8 +842,9 @@ with ba1:
         csv = df.to_csv(index=False)
         st.download_button("⬇️ Click to Download", csv, "fintrack_report.csv", "text/csv", use_container_width=True)
 with ba2:
-    if st.button("💎 Order Custom Dashboard — $299", use_container_width=True):
-        st.info("🌐 Visit our website to place your order for a custom dashboard.")
+   if st.button("💎 Order Custom Dashboard — $25", use_container_width=True):
+        st.info("🌐 Visit our website to place your order for a custom dashboard. https://ilyasarain943.github.io/ilyas-dashboard-portfolio/")
+
 with ba3:
     if st.button("🎥 View Dataset on Kaggle", use_container_width=True):
         st.markdown("[🔗 Open Kaggle Dataset](https://www.kaggle.com/datasets/miadul/personal-finance-ml-dataset)", unsafe_allow_html=True)
