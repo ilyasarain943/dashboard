@@ -72,18 +72,94 @@ html, body, [class*="css"] {
   font-weight: 600 !important;
 }
 
-/* Sidebar inputs */
-[data-testid="stSidebar"] .stSelectbox > div > div,
-[data-testid="stSidebar"] .stMultiSelect > div > div {
-  background: rgba(15, 82, 186, 0.12) !important;
+/* ── FIX WHITE BACKGROUNDS ON ALL SIDEBAR INPUTS ── */
+
+/* Selectbox container */
+[data-testid="stSidebar"] [data-baseweb="select"] {
+  background: rgba(15,82,186,0.12) !important;
+}
+[data-testid="stSidebar"] [data-baseweb="select"] > div {
+  background: rgba(15,82,186,0.12) !important;
   border: 1px solid var(--glass-border) !important;
   border-radius: 10px !important;
   color: var(--white) !important;
 }
 
+/* Multiselect container + tags */
+[data-testid="stSidebar"] [data-baseweb="tag"] {
+  background: rgba(15,82,186,0.45) !important;
+  border: 1px solid var(--glass-border) !important;
+  border-radius: 6px !important;
+  color: white !important;
+}
+[data-testid="stSidebar"] [data-baseweb="tag"] span {
+  color: white !important;
+}
+[data-testid="stSidebar"] [data-baseweb="select"] input {
+  background: transparent !important;
+  color: var(--white) !important;
+  caret-color: white !important;
+}
+
+/* Date input */
+[data-testid="stSidebar"] [data-testid="stDateInput"] > div,
+[data-testid="stSidebar"] [data-testid="stDateInput"] input,
+[data-testid="stSidebar"] .stDateInput input,
+[data-testid="stSidebar"] input[type="text"],
+[data-testid="stSidebar"] input[type="date"],
+[data-testid="stSidebar"] input {
+  background: rgba(15,82,186,0.12) !important;
+  border: 1px solid var(--glass-border) !important;
+  border-radius: 10px !important;
+  color: var(--white) !important;
+  caret-color: white !important;
+}
+
+/* baseweb input wrapper used for date range */
+[data-testid="stSidebar"] [data-baseweb="input"] {
+  background: rgba(15,82,186,0.12) !important;
+  border: 1px solid var(--glass-border) !important;
+  border-radius: 10px !important;
+}
+[data-testid="stSidebar"] [data-baseweb="input"] input {
+  background: transparent !important;
+  color: var(--white) !important;
+}
+
+/* Dropdown menu popup */
+[data-baseweb="popover"] [data-baseweb="menu"],
+[data-baseweb="popover"] ul {
+  background: #1a2744 !important;
+  border: 1px solid var(--glass-border) !important;
+}
+[data-baseweb="popover"] li {
+  background: #1a2744 !important;
+  color: var(--white) !important;
+}
+[data-baseweb="popover"] li:hover {
+  background: rgba(15,82,186,0.4) !important;
+}
+
+/* Slider thumb */
 [data-testid="stSidebar"] .stSlider [data-baseweb="slider"] div[role="slider"] {
   background: var(--sapphire) !important;
   border: 2px solid var(--blurple) !important;
+}
+
+/* Calendar popup for date picker */
+[data-baseweb="calendar"] {
+  background: #1a2744 !important;
+  border: 1px solid var(--glass-border) !important;
+  border-radius: 12px !important;
+}
+[data-baseweb="calendar"] * {
+  color: var(--white) !important;
+}
+[data-baseweb="calendar"] button {
+  background: transparent !important;
+}
+[data-baseweb="calendar"] [aria-selected="true"] div {
+  background: var(--sapphire) !important;
 }
 
 /* ── METRICS / KPI ORBS ── */
@@ -766,8 +842,8 @@ with ba1:
         csv = df.to_csv(index=False)
         st.download_button("⬇️ Click to Download", csv, "fintrack_report.csv", "text/csv", use_container_width=True)
 with ba2:
-    if st.button("💎 Order Custom Dashboard — $25", use_container_width=True):
-        st.info("🌐 Visit our website to place your order for a custom dashboard. https://ilyasarain943.github.io/ilyas-dashboard-portfolio/")
+    if st.button("💎 Order Custom Dashboard — $299", use_container_width=True):
+        st.info("🌐 Visit our website to place your order for a custom dashboard.")
 with ba3:
     if st.button("🎥 View Dataset on Kaggle", use_container_width=True):
         st.markdown("[🔗 Open Kaggle Dataset](https://www.kaggle.com/datasets/miadul/personal-finance-ml-dataset)", unsafe_allow_html=True)
